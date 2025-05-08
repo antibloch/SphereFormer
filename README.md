@@ -28,18 +28,46 @@ The below guide is for *semantic segmentation*.
 
 Install dependencies (we test on python=3.7.9, pytorch==1.8.0, cuda==11.1, gcc==7.5.0)
 ```
-git clone https://github.com/dvlab-research/SphereFormer.git --recursive
-pip install torch==1.8.0+cu111 torchvision==0.9.0+cu111 torchaudio==0.8.0 -f https://download.pytorch.org/whl/torch_stable.html
-pip install torch_scatter==2.0.9
-pip install torch_geometric==1.7.2
-pip install spconv-cu114==2.1.21
-pip install torch_sparse==0.6.12 cumm-cu114==0.2.8 torch_cluster==1.5.9
-pip install tensorboard timm termcolor tensorboardX
-```
+conda install pytorch==1.8.0 torchvision==0.9.0 torchaudio==0.8.0 cudatoolkit=11.1 -c pytorch -c conda-forge
 
-Install `sptr`
-```
-cd third_party/SparseTransformer && python setup.py install
+git clone https://github.com/dvlab-research/SphereFormer.git --recursive
+
+pip install torch-scatter==2.0.9 torch-sparse==0.6.12 torch-cluster==1.5.9 -f https://data.pyg.org/whl/torch-1.8.0+cu111.html
+
+pip install spconv-cu114==2.1.25
+
+pip install cumm-cu114==0.2.9
+
+
+#----In case later command doesnot work-------
+sudo snap remove curl
+sudo apt update
+sudo apt install curl
+#---------------------------------------------
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+source $HOME/.cargo/env
+
+pip install tensorboard timm termcolor tensorboardX
+
+cd third_party/SparseTransformer
+
+
+# ---------In case one doesnot have cuda 11.1 installed-----------------------------------------------------------
+wget https://developer.download.nvidia.com/compute/cuda/11.1.1/local_installers/cuda_11.1.1_455.32.00_linux.run
+sudo sh cuda_11.1.1_455.32.00_linux.run
+export CUDA_HOME=/usr/local/cuda-11.1
+export PATH=$CUDA_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+#-----------------------------------------------------------------------------------------------------------------
+
+python setup.py install
+
+
+sudo apt install -y gcc-7 g++-7
+
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 70 --slave /usr/bin/g++ g++ /usr/bin/g++-7
+sudo update-alternatives --config gcc
 ```
 
 Note: Make sure you have installed `gcc` and `cuda`, and `nvcc` can work (if you install cuda by conda, it won't provide nvcc and you should install cuda manually.)
