@@ -661,13 +661,6 @@ def validate_distance(val_loader, model, criterion):
             output = model(sinput, xyz, batch)
             output = output[inds_reverse, :]
         
-            if loss_name == 'focal_loss':
-                loss = focal_loss(output, target, criterion.weight, args.ignore_label, args.loss_gamma)
-            elif loss_name == 'ce_loss':
-                loss = criterion(output, target)
-            else:
-                raise ValueError("such loss {} not implemented".format(loss_name))
-
         output = output.max(1)[1]
 
 
