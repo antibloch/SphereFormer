@@ -27,7 +27,7 @@ from util.logger import get_logger
 from util.lr import MultiStepWithWarmup, PolyLR, PolyLRwithWarmup, Constant
 
 from util.nuscenes import nuScenes
-from util.semantic_kitti_v2 import SemanticKITTI_Pathetic
+from util.semantic_kitti_v3 import SemanticKITTI_Pathetic
 from util.waymo import Waymo
 
 from functools import partial
