@@ -35,7 +35,7 @@ import pickle
 import yaml
 from torch_scatter import scatter_mean
 import spconv.pytorch as spconv
-
+import matplotlib.patches as mpatches
 
 def get_parser():
     parser = argparse.ArgumentParser(description='PyTorch Point Cloud Semantic Segmentation')
@@ -360,6 +360,176 @@ def validate_tta(val_loader, model, criterion):
     return loss_meter.avg, mIoU, mAcc, allAcc
 
 
+
+colors = {
+    0: [0, 0, 0],       # unlabeled - black
+    1: [0, 0, 1],       # car - blue
+    2: [1, 0, 0],       # bicycle - red
+    3: [1, 0, 1],       # motorcycle - magenta
+    4: [0, 1, 1],       # truck - cyan
+    5: [0.5, 0.5, 0],   # other-vehicle - olive
+    6: [1, 0.5, 0],     # person - orange
+    7: [1, 1, 0],       # bicyclist - yellow
+    8: [1, 0, 0.5],     # motorcyclist - pink
+    9: [0.5, 0.5, 0.5], # road - gray
+    10: [0.5, 0, 0],    # parking - dark red
+    11: [0, 0.5, 0],    # sidewalk - dark green
+    12: [0, 0, 0.5],    # other-ground - dark blue
+    13: [0, 0.5, 0.5],  # building - teal
+    14: [0.5, 0, 0.5],  # fence - purple
+    15: [0, 1, 0],      # vegetation - green
+    16: [0.7, 0.7, 0.7],# trunk - light gray
+    17: [0.7, 0, 0.7],  # terrain - light purple
+    18: [0, 0.7, 0.7],  # pole - light cyan
+    19: [0.7, 0.7, 0]   # traffic-sign - light yellow
+}
+
+
+
+
+
+def create_video_from_frames(frame_dir, output_path, fps=30):
+    """
+    Create a video from the saved frames using OpenCV.
+    
+    Args:
+        frame_dir (str): Directory containing the frames
+        output_path (str): Path to save the video
+        fps (int): Frames per second for the output video
+    """
+    # Get all PNG files in the directory
+    frame_files = sorted([f for f in os.listdir(frame_dir) if f.endswith('.png')])
+    
+    if not frame_files:
+        print(f"No frames found in {frame_dir}")
+        return
+    
+    # Read the first frame to get dimensions
+    first_frame = cv2.imread(os.path.join(frame_dir, frame_files[0]))
+    height, width, layers = first_frame.shape
+    
+    # Define the codec and create VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use mp4v codec for MP4 format
+    video = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+    
+    # Add each frame to the video
+    for frame_file in frame_files:
+        frame_path = os.path.join(frame_dir, frame_file)
+        frame = cv2.imread(frame_path)
+        
+        # Check if frame was loaded properly
+        if frame is None:
+            print(f"Warning: Could not read frame {frame_path}")
+            continue
+            
+        video.write(frame)
+    
+    # Release the video writer
+    video.release()
+    print(f"Video saved to {output_path}")
+
+
+
+
+def view_frame(points, pred_colors, labels_colors, legend_patches, output_dir, i):
+    # Calculate center for rotation
+    center = np.mean(points, axis=0)
+    
+    # Find the bounding box to determine appropriate axis limits
+    min_bound = np.min(points, axis=0)
+    max_bound = np.max(points, axis=0)
+    extent = np.max(max_bound - min_bound)
+    
+    # Fixed axis limits for consistent view
+    view_radius = extent / 1.5  # Adjust for good default view
+
+    p = 0.1
+    max_zoom = 6.0
+
+    # Calculate the rotation angle for this frame
+    angle = p * 360.0
+    
+    # Create a rotation matrix around the y-axis
+    rotation_matrix = np.array([
+        [np.cos(np.radians(angle)), 0, np.sin(np.radians(angle))],
+        [0, 1, 0],
+        [-np.sin(np.radians(angle)), 0, np.cos(np.radians(angle))]
+    ])
+    
+    # Apply a constant zoom factor to all frames
+    current_zoom = max_zoom
+    
+    # Apply rotation to the points relative to the center
+    centered_points = points - center
+    
+    # Apply zoom by scaling the points (zoom in = points appear larger)
+    zoomed_points = centered_points * current_zoom
+    
+    # Apply rotation and shift back
+    rotated_points = np.dot(zoomed_points, rotation_matrix.T) + center
+
+    # Create figure with two horizontal subplots
+    fig = plt.figure(figsize=(20, 8), dpi=120)
+    
+    # First subplot - Predictions
+    ax1 = fig.add_subplot(1, 2, 1, projection='3d')
+    ax1.scatter(
+        rotated_points[:, 0], 
+        rotated_points[:, 1], 
+        rotated_points[:, 2],
+        c=pred_colors, 
+        s=0.5,
+        alpha=0.7
+    )
+    ax1.set_title('Predictions', color='white', fontsize=14)
+    ax1.set_box_aspect([1, 1, 1])
+    ax1.set_xlim(center[0] - view_radius, center[0] + view_radius)
+    ax1.set_ylim(center[1] - view_radius, center[1] + view_radius)
+    ax1.set_zlim(center[2] - view_radius, center[2] + view_radius)
+    ax1.set_axis_off()
+    ax1.set_facecolor((0.1, 0.1, 0.1))
+    elev = 20 + 10 * np.sin(np.radians(angle))
+    ax1.view_init(elev=elev, azim=angle)
+    
+    # Second subplot - Ground Truth Labels
+    ax2 = fig.add_subplot(1, 2, 2, projection='3d')
+    ax2.scatter(
+        rotated_points[:, 0], 
+        rotated_points[:, 1], 
+        rotated_points[:, 2],
+        c=labels_colors, 
+        s=0.5,
+        alpha=0.7
+    )
+    ax2.set_title('Ground Truth', color='white', fontsize=14)
+    ax2.set_box_aspect([1, 1, 1])
+    ax2.set_xlim(center[0] - view_radius, center[0] + view_radius)
+    ax2.set_ylim(center[1] - view_radius, center[1] + view_radius)
+    ax2.set_zlim(center[2] - view_radius, center[2] + view_radius)
+    ax2.set_axis_off()
+    ax2.set_facecolor((0.1, 0.1, 0.1))
+    ax2.view_init(elev=elev, azim=angle)
+    
+    # Add legend to the second subplot
+    ax2.legend(handles=legend_patches, loc='upper right', bbox_to_anchor=(1.15, 1),
+              fancybox=True, shadow=True, ncol=1, fontsize='small',
+              framealpha=0.8, facecolor='lightgray', edgecolor='black')
+    
+    # Set dark background for entire figure
+    fig.set_facecolor((0.1, 0.1, 0.1))
+    
+    # Adjust layout
+    plt.tight_layout()
+    
+    # Save the image
+    output_path = os.path.join(output_dir, f"frame_{i}.png")
+    plt.savefig(output_path, bbox_inches='tight', pad_inches=0.1, facecolor=(0.1, 0.1, 0.1))
+    plt.close()  # Close the figure to free memory
+
+
+
+
+
 def validate_distance(val_loader, model, criterion):
     if main_process():
         logger.info('>>>>>>>>>>>>>>>> Start Evaluation >>>>>>>>>>>>>>>>')
@@ -370,9 +540,38 @@ def validate_distance(val_loader, model, criterion):
     union_meter = AverageMeter()
     target_meter = AverageMeter()
 
+    class_names = [
+    "car",
+    "bicycle",
+    "motorcycle",
+    "truck",
+    "other-vehicle",
+    "person",
+    "bicyclist",
+    "motorcyclist",
+    "road",
+    "parking",
+    "sidewalk",
+    "other-ground",
+    "building",
+    "fence",
+    "vegetation",
+    "trunk",
+    "terrain",
+    "pole",
+    "traffic-sign",
+    "unlabeled",
+    ]
+
+
     if os.path.exists('seg_results'):
         shutil.rmtree('seg_results')
     os.makedirs('seg_results', exist_ok=True)
+
+    if os.path.exists('all_results'):
+        shutil.rmtree('all_results')
+
+    os.makedirs('all_results', exist_ok=True)
 
     # For validation on points with different distance
     intersection_meter_list = [AverageMeter(), AverageMeter(), AverageMeter()]
@@ -385,6 +584,8 @@ def validate_distance(val_loader, model, criterion):
 
     model.eval()
     end = time.time()
+    num_classes = 19
+    conf_matrix = np.zeros((num_classes, num_classes), dtype=np.uint64)
     for i, batch_data in enumerate(val_loader):
 
         data_time.update(time.time() - end)
@@ -476,6 +677,45 @@ def validate_distance(val_loader, model, criterion):
         print('segmentation_np', segmentation_np.shape)
         print('labels_np', labels_np.shape)
 
+
+
+        pred_colors = np.zeros((len(segmentation_np), 3), dtype=np.float32)
+        ref_colors = np.zeros((len(labels_np), 3), dtype=np.float32)
+
+
+        # computer per class IoU and mIOU
+
+
+        for label in range(num_classes):
+            pred_colors[segmentation_np == label] = colors[label]
+
+
+        for label in range(num_classes+1):
+            ref_colors[labels_np == label] = colors[label]
+
+        legend_patches = []
+        for i, class_name in enumerate(class_names):
+            rgb_color = colors[i]
+            patch = mpatches.Patch(color=rgb_color, label=class_name)   
+            legend_patches.append(patch)
+
+
+        view_frame(points_np,  pred_colors, ref_colors,  legend_patches, "all_results", i)
+
+
+
+
+    
+
+        valid_mask = (labels_np >= 0) & (labels_np < num_classes)
+        valid_preds = segmentation_np[valid_mask]
+        valid_labels = labels_np [valid_mask]
+        for t, p in zip(valid_labels, valid_preds):
+            if 0 <= t < num_classes and 0 <= p < num_classes:
+                conf_matrix[t, p] += 1
+
+
+
         colors = np.zeros((len(points_np), 3)).astype(np.float32)
         unique_labels = np.unique(segmentation_np)
         for i in unique_labels:
@@ -485,87 +725,35 @@ def validate_distance(val_loader, model, criterion):
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(points_np)
         pcd.colors = o3d.utility.Vector3dVector(colors)
-        # visualizer = o3d.visualization.Visualizer()
-        # visualizer.create_window()
-        # visualizer.add_geometry(pcd)
-        # visualizer.run()
-        # visualizer.destroy_window()
+
 
         # save pcd
-        o3d.io.write_point_cloud(os.path.join('ref_results',f'{file_name_cloud}.pcd'), pcd)
+        o3d.io.write_point_cloud(os.path.join('all_results',f'{file_name_cloud}.pcd'), pcd)
+
+
+    create_video_from_frames("all_results", os.path.join("all_results", "output_video.mp4"), fps=2)
 
    
 
+    print("\n==== Per-Class IoU and mIoU ====")
+    ious = []
+    for i in range(num_classes):
+        TP = conf_matrix[i, i]
+        FP = conf_matrix[:, i].sum() - TP
+        FN = conf_matrix[i, :].sum() - TP
+        denom = TP + FP + FN
+        if denom == 0:
+            iou = float('nan')
+        else:
+            iou = TP / denom
+        ious.append(iou)
+        print(f"{class_names[i]:<15}: IoU = {iou:.4f}" if not np.isnan(iou) else f"{class_names[i]:<15}: IoU = N/A (class absent)")
 
-        n = coord.size(0)
-        if args.multiprocessing_distributed:
-            loss *= n
-            count = target.new_tensor([n], dtype=torch.long)
-            dist.all_reduce(loss), dist.all_reduce(count)
-            n = count.item()
-            loss /= n
-
-        r = torch.sqrt(feat[:, 0] ** 2 + feat[:, 1] ** 2 + feat[:, 2] ** 2)
-        r = r[inds_reverse]
-        
-        # For validation on points with different distance
-        masks = [r <= 20, (r > 20) & (r <= 50), r > 50]
-
-        for ii, mask in enumerate(masks):
-            intersection, union, tgt = intersectionAndUnionGPU(output[mask], target[mask], args.classes, args.ignore_label)
-            if args.multiprocessing_distributed:
-                dist.all_reduce(intersection), dist.all_reduce(union), dist.all_reduce(tgt)
-            intersection, union, tgt = intersection.cpu().numpy(), union.cpu().numpy(), tgt.cpu().numpy()
-            intersection_meter_list[ii].update(intersection), union_meter_list[ii].update(union), target_meter_list[ii].update(tgt)
-
-        intersection, union, target = intersectionAndUnionGPU(output, target, args.classes, args.ignore_label)
-        if args.multiprocessing_distributed:
-            dist.all_reduce(intersection), dist.all_reduce(union), dist.all_reduce(target)
-        intersection, union, target = intersection.cpu().numpy(), union.cpu().numpy(), target.cpu().numpy()
-        intersection_meter.update(intersection), union_meter.update(union), target_meter.update(target)
-
-        accuracy = sum(intersection_meter.val) / (sum(target_meter.val) + 1e-10)
-        loss_meter.update(loss.item(), n)
-        batch_time.update(time.time() - end)
-        end = time.time()
-        if (i + 1) % args.print_freq == 0 and main_process():
-            logger.info('Test: [{}/{}] '
-                        'Data {data_time.val:.3f} ({data_time.avg:.3f}) '
-                        'Batch {batch_time.val:.3f} ({batch_time.avg:.3f}) '
-                        'Loss {loss_meter.val:.4f} ({loss_meter.avg:.4f}) '
-                        'Accuracy {accuracy:.4f}.'.format(i + 1, len(val_loader),
-                                                          data_time=data_time,
-                                                          batch_time=batch_time,
-                                                          loss_meter=loss_meter,
-                                                          accuracy=accuracy))
-
-    iou_class = intersection_meter.sum / (union_meter.sum + 1e-10)
-    accuracy_class = intersection_meter.sum / (target_meter.sum + 1e-10)
-    mIoU = np.mean(iou_class)
-    mAcc = np.mean(accuracy_class)
-    allAcc = sum(intersection_meter.sum) / (sum(target_meter.sum) + 1e-10)
-
-    iou_class_list = [intersection_meter_list[i].sum / (union_meter_list[i].sum + 1e-10) for i in range(3)]
-    accuracy_class_list = [intersection_meter_list[i].sum / (target_meter_list[i].sum + 1e-10) for i in range(3)]
-    mIoU_list = [np.mean(iou_class_list[i]) for i in range(3)]
-    mAcc_list = [np.mean(accuracy_class_list[i]) for i in range(3)]
-    allAcc_list = [sum(intersection_meter_list[i].sum) / (sum(target_meter_list[i].sum) + 1e-10) for i in range(3)]
-
-    if main_process():
-
-        metrics = ['close', 'medium', 'distant']
-        for ii in range(3):
-            logger.info('Val result_{}: mIoU/mAcc/allAcc {:.4f}/{:.4f}/{:.4f}.'.format(metrics[ii], mIoU_list[ii], mAcc_list[ii], allAcc_list[ii]))
-            for i in range(args.classes):
-                logger.info('Class_{} Result: iou/accuracy {:.4f}/{:.4f}.'.format(i, iou_class_list[ii][i], accuracy_class_list[ii][i]))
-
-        logger.info('Val result: mIoU/mAcc/allAcc {:.4f}/{:.4f}/{:.4f}.'.format(mIoU, mAcc, allAcc))
-        for i in range(args.classes):
-            logger.info('Class_{} Result: iou/accuracy {:.4f}/{:.4f}.'.format(i, iou_class[i], accuracy_class[i]))
-        logger.info('<<<<<<<<<<<<<<<<< End Evaluation <<<<<<<<<<<<<<<<<')
+    valid_ious = [iou for iou in ious if not np.isnan(iou)]
+    mean_iou = np.mean(valid_ious)
+    print(f"\nMean IoU over {len(valid_ious)} valid classes: {mean_iou:.4f}")
     
-    return loss_meter.avg, mIoU, mAcc, allAcc
-
+ 
 
 if __name__ == '__main__':
     import gc
