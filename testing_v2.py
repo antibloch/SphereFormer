@@ -36,6 +36,7 @@ import yaml
 from torch_scatter import scatter_mean
 import spconv.pytorch as spconv
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 import cv2
 
 def get_parser():
