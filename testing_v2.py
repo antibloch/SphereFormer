@@ -470,7 +470,7 @@ def validate_distance(val_loader, model, criterion):
 
         points_np = ref_points.cpu().numpy().astype(np.float32)
         segmentation_np = output.cpu().numpy()
-        labels_np = labels.cpu().numpy()    
+        labels_np = labels.cpu().numpy().squeeze(-1)    
 
         print('points_np', points_np.shape)
         print('segmentation_np', segmentation_np.shape)
