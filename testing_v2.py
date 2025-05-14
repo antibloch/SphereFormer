@@ -36,6 +36,7 @@ import yaml
 from torch_scatter import scatter_mean
 import spconv.pytorch as spconv
 import matplotlib.patches as mpatches
+import cv2
 
 def get_parser():
     parser = argparse.ArgumentParser(description='PyTorch Point Cloud Semantic Segmentation')
@@ -227,8 +228,8 @@ def main_worker(gpu, ngpus_per_node, argss):
         pc_range=args.get("pc_range", None), 
         use_tta=args.use_tta,
         vote_num=args.vote_num,
-        test_path='test_data',
-        test_path_label='test_data_label',
+        test_path='refined_data/pc',
+        test_path_label='redined_data/label',
     )
 
     for i in range(len(val_data)):
