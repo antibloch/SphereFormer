@@ -542,6 +542,30 @@ def validate_distance(val_loader, model, criterion):
     union_meter = AverageMeter()
     target_meter = AverageMeter()
 
+    colors = {
+    0: [0, 0, 0],       # unlabeled - black
+    1: [0, 0, 1],       # car - blue
+    2: [1, 0, 0],       # bicycle - red
+    3: [1, 0, 1],       # motorcycle - magenta
+    4: [0, 1, 1],       # truck - cyan
+    5: [0.5, 0.5, 0],   # other-vehicle - olive
+    6: [1, 0.5, 0],     # person - orange
+    7: [1, 1, 0],       # bicyclist - yellow
+    8: [1, 0, 0.5],     # motorcyclist - pink
+    9: [0.5, 0.5, 0.5], # road - gray
+    10: [0.5, 0, 0],    # parking - dark red
+    11: [0, 0.5, 0],    # sidewalk - dark green
+    12: [0, 0, 0.5],    # other-ground - dark blue
+    13: [0, 0.5, 0.5],  # building - teal
+    14: [0.5, 0, 0.5],  # fence - purple
+    15: [0, 1, 0],      # vegetation - green
+    16: [0.7, 0.7, 0.7],# trunk - light gray
+    17: [0.7, 0, 0.7],  # terrain - light purple
+    18: [0, 0.7, 0.7],  # pole - light cyan
+    19: [0.7, 0.7, 0]   # traffic-sign - light yellow
+}
+
+
     class_names = [
     "car",
     "bicycle",
