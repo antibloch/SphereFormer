@@ -542,7 +542,7 @@ def validate_distance(val_loader, model, criterion):
     union_meter = AverageMeter()
     target_meter = AverageMeter()
 
-    colors = {
+    sup_colors = {
     0: [0, 0, 0],       # unlabeled - black
     1: [0, 0, 1],       # car - blue
     2: [1, 0, 0],       # bicycle - red
@@ -714,7 +714,7 @@ def validate_distance(val_loader, model, criterion):
 
         legend_patches = []
         for i, class_name in enumerate(class_names):
-            rgb_color = colors[i]
+            rgb_color = sup_colors[i]
             patch = mpatches.Patch(color=rgb_color, label=class_name)   
             legend_patches.append(patch)
 
