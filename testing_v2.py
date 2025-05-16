@@ -752,10 +752,13 @@ def validate_distance(val_loader, model, criterion):
 
     create_video_from_frames("all_results", os.path.join("all_results", "output_video.mp4"), fps=2)
 
-   
-
+    class_pixel_counts = conf_matrix.sum(axis=1)
+    total_pixel_count = class_pixel_counts.sum()
+    weights = class_pixel_counts / total_pixel_count
     print("\n==== Per-Class IoU and mIoU ====")
-    ious = []
+    weighted_ious = []
+    valid_count = 0
+    wrong_count = 0
     for i in range(num_classes):
         TP = conf_matrix[i, i]
         FP = conf_matrix[:, i].sum() - TP
@@ -763,16 +766,20 @@ def validate_distance(val_loader, model, criterion):
         denom = TP + FP + FN
         if denom == 0:
             iou = float('nan')
+            print(f"{class_names[i]:<15}: IoU = N/A (class absent in prediction and ground-truth)")
+        elif TP  == 0:
+            iou = TP / denom
+            wrong_count += 1
+            print(f"{class_names[i]:<15}: IoU = {iou:.4f} (This class is predicted but not in ground-truth)")
         else:
             iou = TP / denom
-        ious.append(iou)
-        print(f"{class_names[i]:<15}: IoU = {iou:.4f}" if not np.isnan(iou) else f"{class_names[i]:<15}: IoU = N/A (class absent)")
-
-    valid_ious = [iou for iou in ious if not np.isnan(iou)]
-    mean_iou = np.mean(valid_ious)
-    print(f"\nMean IoU over {len(valid_ious)} valid classes: {mean_iou:.4f}")
+            valid_count += 1
+            weighted_ious.append(iou* weights[i])
+            print(f"{class_names[i]:<15}: IoU = {iou:.4f}")
+    mean_iou = sum(weighted_ious)
+    print(f"\nMean IoU over {valid_count}/{num_classes} valid classes (classes both in predictions and ground-truth): {mean_iou:.4f}")
     
- 
+
 
 if __name__ == '__main__':
     import gc
