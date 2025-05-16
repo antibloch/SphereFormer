@@ -230,7 +230,7 @@ def main_worker(gpu, ngpus_per_node, argss):
         use_tta=args.use_tta,
         vote_num=args.vote_num,
         test_path='refined_data/pc',
-        test_path_label='redined_data/label',
+        test_path_label='refined_data/label',
     )
 
     for i in range(len(val_data)):
