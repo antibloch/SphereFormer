@@ -770,16 +770,23 @@ def validate_distance(val_loader, model, criterion):
                 wrong_count += 1
                 print(f"{class_names[i]:<15}: IoU = {iou:.4f} (This class is predicted but not in ground-truth)")
                 classy_iou[i] = 0.0
-                sparse_class_ious.append(classy_iou[i])
             else:
                 iou = TP / denom
                 valid_count += 1
                 weighted_ious.append(iou* weights[i])
                 print(f"{class_names[i]:<15}: IoU = {iou:.4f}")
                 classy_iou[i] = iou
-                dense_class_ious.append(classy_iou[i])
+                
+        mask_classy_iou = (classy_iou != 0.0)
 
         mean_iou = sum(weighted_ious)
+
+        if np.sum(mask_classy_iou)==1:
+            dense_class_ious.append(mean_iou)
+        else:
+            sparse_class_ious.append(mean_iou)
+
+
         print(f"\nMean IoU over {valid_count}/{num_classes} valid classes (classes both in predictions and ground-truth): {mean_iou:.4f}")
         
         classy_iou.append(mean_iou)
