@@ -796,9 +796,7 @@ def validate_distance(val_loader, model, criterion):
         
     # save df
     df.to_csv('all_results/super_metrics.csv', index=False)
-
     df_np = df.to_numpy()
-
     per_classes_ious = []
     for i in range(1, num_classes+1):
         per_class_iou = df_np[:, i]
@@ -807,15 +805,13 @@ def validate_distance(val_loader, model, criterion):
         mean_iou = np.mean(per_class_iou)
         per_classes_ious.append(mean_iou)
     per_classes_ious = np.array(per_classes_ious)
-
     dense_mean_iou = np.mean(dense_class_ious)
     sparse_mean_iou = np.mean(sparse_class_ious)
-
     print("-------------------------------------------")
     print("===========Mean Scores=====================")
     for i in range(num_classes):
         print(f"Class {class_names[i]}: {per_classes_ious[i]:.4f}")
-
+    print("-------------------------------------------")
     print(f"Dense Mean IoU: {dense_mean_iou:.4f}")
     print(f"Sparse Mean IoU: {sparse_mean_iou:.4f}")
     print("===========================================")
