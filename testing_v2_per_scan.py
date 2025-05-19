@@ -782,9 +782,9 @@ def validate_distance(val_loader, model, criterion):
         mean_iou = sum(weighted_ious)
 
         if np.sum(mask_classy_iou)==1:
-            dense_class_ious.append(mean_iou)
-        else:
             sparse_class_ious.append(mean_iou)
+        else:
+            dense_class_ious.append(mean_iou)
 
 
         print(f"\nMean IoU over {valid_count}/{num_classes} valid classes (classes both in predictions and ground-truth): {mean_iou:.4f}")
