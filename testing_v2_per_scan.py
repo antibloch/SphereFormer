@@ -812,8 +812,8 @@ def validate_distance(val_loader, model, criterion):
     for i in range(num_classes):
         print(f"Class {class_names[i]}: {per_classes_ious[i]:.4f}" if str(per_classes_ious[i]) != 'nan' else f"Class {class_names[i]}: N/A")
     print("-------------------------------------------")
-    print(f"Dense Mean IoU: {dense_mean_iou:.4f}")
-    print(f"Sparse Mean IoU: {sparse_mean_iou:.4f}")
+    print(f"Mean IoU over fully annotated: {dense_mean_iou:.4f}")
+    print(f"Mean IoU over partially annotated: {sparse_mean_iou:.4f}")
     print("===========================================")
     print("-------------------------------------------")
 
