@@ -96,28 +96,38 @@ lab_files = os.listdir(lab_pth)
 velo_files = sorted(velo_files, key=lambda x: int(x.split('.')[0]))
 lab_files = sorted(lab_files, key=lambda x: int(x.split('.')[0]))
 for i in range(len(velo_files)):
-    file_name = velo_files[i].split('.')[0]
-    velo_file = os.path.join(velodyne_pth, velo_files[i])
-    lab_file = os.path.join(lab_pth, lab_files[i])
-    target_file = os.path.join(target_pth, lab_files[i])
-    # Read the velodyne file
-    velo_data = np.fromfile(velo_file, dtype=np.float32).reshape(-1, 4)
-    # Read the label file
-    lab_data = np.fromfile(lab_file, dtype=np.int32)
-    label_data = lab_data.reshape((-1))
-    semantic_labels = lab_data  & 0xFFFF  # bitwise AND with 0xFFFF
-    inst_labels = lab_data >> 16
-    assert ((semantic_labels + (inst_labels << 16) == label_data).all())
-    remap_dict = learning_map
-    max_key = max(remap_dict.keys())
-    remap_lut = np.zeros((max_key + 100), dtype=np.int32)
-    remap_lut[list(remap_dict.keys())] = list(remap_dict.values())
-    label = remap_lut[semantic_labels]
-    unique_labels = np.unique(label)
-    colors_labs = np.zeros((len(label), 3)).astype(np.float32)
-    for j, lab in enumerate(unique_labels):
-        # colors_labs[j] = colors[lab]
-        mask = (label == lab)
-        colors_labs[mask] = colors[lab]
-    np.save(os.path.join(target_pth, 'pc', file_name + '.npy'), velo_data)
-    np.save(os.path.join(target_pth, 'label', file_name + '.npy'), semantic_labels)
+    if i <1:
+        file_name = velo_files[i].split('.')[0]
+        velo_file = os.path.join(velodyne_pth, velo_files[i])
+        lab_file = os.path.join(lab_pth, lab_files[i])
+        target_file = os.path.join(target_pth, lab_files[i])
+        # Read the velodyne file
+        velo_data = np.fromfile(velo_file, dtype=np.float32).reshape(-1, 4)
+        # Read the label file
+        lab_data = np.fromfile(lab_file, dtype=np.int32)
+        label_data = lab_data.reshape((-1))
+        semantic_labels = lab_data  & 0xFFFF  # bitwise AND with 0xFFFF
+        # inst_labels = lab_data >> 16
+        # assert ((semantic_labels + (inst_labels << 16) == label_data).all())
+        remap_dict = learning_map
+        # max_key = max(remap_dict.keys())
+        # remap_lut = np.zeros((max_key + 100), dtype=np.int32)
+        # remap_lut[list(remap_dict.keys())] = list(remap_dict.values())
+        # label = remap_lut[semantic_labels]
+        u_s_l = np.unique(semantic_labels)
+        label = np.zeros((semantic_labels.shape[0]), dtype=np.int32)
+        for i in range(len(u_s_l)):
+            label[semantic_labels == u_s_l[i]] = remap_dict[u_s_l[i]]
+        label = (label - 1) % 19
+        unique_labels = np.unique(label)
+        colors_labs = np.zeros((len(label), 3)).astype(np.float32)
+        for j, lab in enumerate(unique_labels):
+            # colors_labs[j] = colors[lab]
+            mask = (label == lab)
+            colors_labs[mask] = colors[lab]
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(velo_data[:, :3])
+        pcd.colors = o3d.utility.Vector3dVector(colors_labs)
+        o3d.visualization.draw_geometries([pcd])
+        np.save(os.path.join(target_pth, 'pc', file_name + '.npy'), velo_data)
+        np.save(os.path.join(target_pth, 'label', file_name + '.npy'), label)
