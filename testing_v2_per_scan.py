@@ -619,6 +619,9 @@ def validate_distance(val_loader, model, criterion):
 
     cols.append('mIoU')
     df = pd.DataFrame(columns=cols)
+
+    dense_class_ious = []
+    sparse_class_ious = []
     
     for batch_n, batch_data in enumerate(val_loader):
         conf_matrix = np.zeros((num_classes, num_classes), dtype=np.uint64)
@@ -637,24 +640,12 @@ def validate_distance(val_loader, model, criterion):
         ref_points = ref_points.squeeze(0)
         ref_labels = labels.clone()
 
-        print(coords.shape)
-        print(xyz.shape)
-        print(ref_points.shape)
-        print("||||||||||||||||||||||")
-
 
         coords = (coords,)
         xyz = (xyz,)
         feats = (feats,)
         labels = (labels,)
         inds_recons = (inds_recons,)
-
-        print(coords)
-        print(xyz)
-        print(feats)
-        print(labels)
-        print(inds_recons)
-
 
         inds_recons = list(inds_recons)
 
@@ -772,19 +763,21 @@ def validate_distance(val_loader, model, criterion):
             if denom == 0:
                 iou = float('nan')
                 print(f"{class_names[i]:<15}: IoU = N/A (class absent in prediction and ground-truth)")
-                classy_iou[i] = 0
+                classy_iou[i] = 0.0
 
             elif TP  == 0:
                 iou = TP / denom
                 wrong_count += 1
                 print(f"{class_names[i]:<15}: IoU = {iou:.4f} (This class is predicted but not in ground-truth)")
-                classy_iou[i] = 0
+                classy_iou[i] = 0.0
+                sparse_class_ious.append(classy_iou[i])
             else:
                 iou = TP / denom
                 valid_count += 1
                 weighted_ious.append(iou* weights[i])
                 print(f"{class_names[i]:<15}: IoU = {iou:.4f}")
                 classy_iou[i] = iou
+                dense_class_ious.append(classy_iou[i])
 
         mean_iou = sum(weighted_ious)
         print(f"\nMean IoU over {valid_count}/{num_classes} valid classes (classes both in predictions and ground-truth): {mean_iou:.4f}")
@@ -797,6 +790,29 @@ def validate_distance(val_loader, model, criterion):
     # save df
     df.to_csv('all_results/super_metrics.csv', index=False)
 
+    df_np = df.to_numpy()
+
+    per_classes_ious = []
+    for i in range(1, num_classes+1):
+        per_class_iou = df_np[:, i]
+        mask_iou = per_class_iou != 0
+        per_class_iou = per_class_iou[mask_iou]
+        mean_iou = np.mean(per_class_iou)
+        per_classes_ious.append(mean_iou)
+    per_classes_ious = np.array(per_classes_ious)
+
+    dense_mean_iou = np.mean(dense_class_ious)
+    sparse_mean_iou = np.mean(sparse_class_ious)
+
+    print("-------------------------------------------")
+    print("===========Mean Scores=====================")
+    for i in range(num_classes):
+        print(f"Class {class_names[i]}: {per_classes_ious[i]:.4f}")
+
+    print(f"Dense Mean IoU: {dense_mean_iou:.4f}")
+    print(f"Sparse Mean IoU: {sparse_mean_iou:.4f}")
+    print("===========================================")
+    print("-------------------------------------------")
 
     create_video_from_frames("all_results", os.path.join("all_results", "output_video.mp4"), fps=2)
 
