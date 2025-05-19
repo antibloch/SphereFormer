@@ -777,7 +777,7 @@ def validate_distance(val_loader, model, criterion):
                 print(f"{class_names[i]:<15}: IoU = {iou:.4f}")
                 classy_iou[i] = iou
                 
-        mask_classy_iou = (classy_iou != 0.0)
+        mask_classy_iou = (np.array(classy_iou) != 0.0)
 
         mean_iou = sum(weighted_ious)
 
