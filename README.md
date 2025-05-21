@@ -139,6 +139,10 @@ For validation, you need to modify the `.yaml` config file. (1) fill in the `wei
 python train.py --config [YOUR_CONFIG_PATH]
 ```
 
+```
+python testing_v2_per_scan_v3.py --config config/semantic_kitti/semantic_kitti_unet32_spherical_transformer.yaml
+```
+
 ## Pre-trained Models
 
 
